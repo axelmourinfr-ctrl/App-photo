@@ -7,16 +7,16 @@ const APP_CONFIG = {
 
   // ── Informations de l'événement ──────────────────────
   eventName:     "Fête des Familles",
-  eventSubtitle: "Foyer Les Tilleuls • 2025",
+  eventSubtitle: "Foyer Le Closeau • 2026",
   eventEmoji:    "🎉",
 
   // ── Identifiant de l'édition (utilisé comme nom d'onglet dans Sheets)
   // Changez à chaque événement pour garder une archive séparée
-  eventEdition:  "fete-2025",
+  eventEdition:  "fete-2026",
 
   // ── Mot de passe administrateur ──────────────────────
   // ⚠️  Changez ce mot de passe avant le déploiement !
-  adminPassword: "admin2025",
+  adminPassword: "admin2026",
 
   // ── Catégories du concours ────────────────────────────
   categories: [
@@ -32,13 +32,13 @@ const APP_CONFIG = {
   // 2. Tableau de bord → cherchez "Cloud name"
   // 3. Créez un "Upload Preset" non signé (voir README)
   cloudinary: {
-    cloudName:    "VOTRE_CLOUD_NAME",   // ex: "my-fete-app"
-    uploadPreset: "VOTRE_UPLOAD_PRESET", // ex: "fete_familles_unsigned"
+    cloudName:    "dclk8ygjj",
+    uploadPreset: "closeau", 
   },
 
   // ── Google Apps Script (base de données) ─────────────
   // URL du script déployé (voir README étape 3)
-  scriptUrl: "VOTRE_URL_APPS_SCRIPT",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbypUaQ3-smE3oxs-wYsYp9FaQN219lxzSd5NpDoX98n1yim0-XAlSCH2sdMUKlLWj5Wsg/exec",
 
   // ── Paramètres photo ──────────────────────────────────
   photo: {
