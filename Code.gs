@@ -62,6 +62,10 @@ function doPost(e) {
         result = setVoteStatus(body.open);
         break;
 
+      case "deletePhoto":
+        result = deletePhoto(body.rowIndex);
+        break;
+
       default:
         result = { error: "Action inconnue : " + body.action };
     }

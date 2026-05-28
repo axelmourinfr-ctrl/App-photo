@@ -121,7 +121,10 @@ function _renderAdminList(photos) {
                   title="Approuver">✅</button>
           <button class="admin-btn admin-btn-del"
                   onclick="moderatePhoto(${photo.rowIndex}, 'rejected')"
-                  title="Refuser">🗑️</button>
+                  title="Refuser">🚫</button>
+          <button class="admin-btn admin-btn-trash"
+                  onclick="deletePhoto(${photo.rowIndex}, '${photo.url}')"
+                  title="Supprimer définitivement">🗑️</button>
         </div>
       </div>`;
   }).join("");
@@ -136,6 +139,24 @@ async function moderatePhoto(rowIndex, status) {
   } catch (err) {
     console.error("Erreur modération :", err);
     showToast("❌ Action impossible.", "error");
+  }
+}
+
+// ── Supprimer définitivement une photo ───────────────
+async function deletePhoto(rowIndex, photoUrl) {
+  // Confirmation avant suppression
+  const ok = window.confirm(
+    "⚠️ Supprimer définitivement cette photo ?\n\nElle sera retirée de l'app et de Google Sheets.\nCette action est irréversible."
+  );
+  if (!ok) return;
+
+  try {
+    await API.deletePhoto(rowIndex);
+    showToast("🗑️ Photo supprimée définitivement.", "success");
+    await _refreshAdminPhotos();
+  } catch (err) {
+    console.error("Erreur suppression :", err);
+    showToast("❌ Suppression impossible.", "error");
   }
 }
 

@@ -75,6 +75,11 @@ const API = {
     return data.open === true;
   },
 
+  // ── Supprimer définitivement une photo ────────────
+  async deletePhoto(rowIndex) {
+    return this._post("deletePhoto", { rowIndex });
+  },
+
   // ── Ouvrir / fermer les votes (admin) ─────────────
   async setVoteStatus(open) {
     return this._post("setVoteStatus", { open });

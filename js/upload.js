@@ -36,26 +36,17 @@ function selectCategory(id) {
 
 // ── Liaison des événements ────────────────────────────
 function _bindEvents() {
-  const input   = document.getElementById("photoInput");
-  const zone    = document.getElementById("uploadZone");
   const sendBtn = document.getElementById("sendPhotoBtn");
-  if (!input || !zone || !sendBtn) return;
+  if (sendBtn) sendBtn.addEventListener("click", _handleSend);
+  // Les inputs caméra et galerie sont gérés via handleFileInputChange()
+  // appelé directement depuis le HTML (onchange)
+}
 
-  // Sélection fichier
-  input.addEventListener("change", e => {
-    if (e.target.files[0]) _handleFile(e.target.files[0]);
-  });
-
-  // Glisser-déposer
-  zone.addEventListener("dragover",  e => { e.preventDefault(); zone.classList.add("drag-over"); });
-  zone.addEventListener("dragleave", ()  => zone.classList.remove("drag-over"));
-  zone.addEventListener("drop", e => {
-    e.preventDefault();
-    zone.classList.remove("drag-over");
-    if (e.dataTransfer.files[0]) _handleFile(e.dataTransfer.files[0]);
-  });
-
-  sendBtn.addEventListener("click", _handleSend);
+// ── Appelé depuis les deux inputs (HTML onchange) ─────
+function handleFileInputChange(inputEl) {
+  if (inputEl.files && inputEl.files[0]) {
+    _handleFile(inputEl.files[0]);
+  }
 }
 
 // ── Traitement du fichier choisi ──────────────────────
@@ -83,9 +74,13 @@ function _handleFile(file) {
 // ── Suppression de la sélection ───────────────────────
 function removePhoto() {
   _file = null;
-  document.getElementById("photoPreview").innerHTML   = "";
+  document.getElementById("photoPreview").innerHTML = "";
   document.getElementById("uploadZone").classList.remove("hidden");
-  document.getElementById("photoInput").value         = "";
+  // Réinitialiser les deux inputs
+  const cam = document.getElementById("photoInputCamera");
+  const gal = document.getElementById("photoInputGallery");
+  if (cam) cam.value = "";
+  if (gal) gal.value = "";
 }
 
 // ── Envoi ─────────────────────────────────────────────
@@ -135,7 +130,10 @@ function _resetForm() {
   _category = null;
   document.getElementById("photoPreview").innerHTML = "";
   document.getElementById("uploadZone").classList.remove("hidden");
-  document.getElementById("photoInput").value       = "";
+  const cam = document.getElementById("photoInputCamera");
+  const gal = document.getElementById("photoInputGallery");
+  if (cam) cam.value = "";
+  if (gal) gal.value = "";
   const pseudo = document.getElementById("pseudoInput");
   if (pseudo) pseudo.value = "";
   document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("selected"));

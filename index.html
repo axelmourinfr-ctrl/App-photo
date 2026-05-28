@@ -48,11 +48,22 @@
     <h2 class="section-title">📷 Ma photo</h2>
     <p class="section-sub">Choisissez une photo et une catégorie</p>
 
-    <div class="upload-zone" id="uploadZone">
-      <input type="file" id="photoInput" accept="image/*" capture="environment">
-      <span class="upload-icon">📸</span>
-      <p class="upload-title">Prendre ou choisir une photo</p>
-      <p class="upload-hint">JPG, PNG, HEIC · max 10 Mo</p>
+    <!-- Deux boutons distincts : appareil photo OU galerie -->
+    <div id="uploadZone" class="upload-choice">
+      <div class="upload-choice-btn" onclick="document.getElementById('photoInputCamera').click()">
+        <input type="file" id="photoInputCamera" accept="image/*" capture="environment"
+               style="display:none" onchange="handleFileInputChange(this)">
+        <span class="upload-choice-icon">📸</span>
+        <p class="upload-choice-label">Prendre une photo</p>
+        <p class="upload-choice-hint">Ouvrir l'appareil photo</p>
+      </div>
+      <div class="upload-choice-btn" onclick="document.getElementById('photoInputGallery').click()">
+        <input type="file" id="photoInputGallery" accept="image/*"
+               style="display:none" onchange="handleFileInputChange(this)">
+        <span class="upload-choice-icon">🖼️</span>
+        <p class="upload-choice-label">Depuis la galerie</p>
+        <p class="upload-choice-hint">Choisir une photo existante</p>
+      </div>
     </div>
 
     <div id="photoPreview"></div>
