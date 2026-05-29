@@ -133,9 +133,7 @@ async function submitNewEvent() {
 }
 
 async function deleteEvent(eventId) {
-  if (!confirm("Supprimer cet événement et toutes ses photos ?
-
-Cette action est irréversible.")) return;
+  if (!confirm("Supprimer cet événement et toutes ses photos ?\n\nCette action est irréversible.")) return;
   try {
     await API.deleteEvent(eventId);
     if (_adminEvent?.id === eventId) {
