@@ -16,7 +16,7 @@ const APP_CONFIG = {
   // ── Cloudinary ────────────────────────────────────────
   cloudinary: {
     cloudName:    "dclk8ygjj",
-    uploadPreset: "fete_familles",
+    uploadPreset: "closeau",
   },
 
   // ── Google Apps Script ────────────────────────────────
