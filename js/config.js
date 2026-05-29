@@ -6,21 +6,21 @@
 const APP_CONFIG = {
 
   // ── Nom de l'institution ──────────────────────────────
-  appName:    "Foyer Les Tilleuls",
+  appName:    "Foyer Le Closeau",
   appEmoji:   "🏠",
 
   // ── Mot de passe administrateur ──────────────────────
   // ⚠️  Changez ce mot de passe !
-  adminPassword: "admin2025",
+  adminPassword: "admin2026",
 
   // ── Cloudinary ────────────────────────────────────────
   cloudinary: {
-    cloudName:    "VOTRE_CLOUD_NAME",
-    uploadPreset: "VOTRE_UPLOAD_PRESET",
+    cloudName:    "dclk8ygjj",
+    uploadPreset: "fete_familles",
   },
 
   // ── Google Apps Script ────────────────────────────────
-  scriptUrl: "VOTRE_URL_APPS_SCRIPT",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbys-xRjmU9g3L6FweR3dxYDfAMWF1WqZh_CzZbh29gEILS2ih8yqOOGM-uJogo-eFu6GQ/exec",
 
   // ── Paramètres photo ──────────────────────────────────
   photo: {
