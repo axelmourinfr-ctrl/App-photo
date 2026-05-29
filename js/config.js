@@ -38,7 +38,7 @@ const APP_CONFIG = {
 
   // ── Google Apps Script (base de données) ─────────────
   // URL du script déployé (voir README étape 3)
-  scriptUrl: "https://script.google.com/macros/s/AKfycbypUaQ3-smE3oxs-wYsYp9FaQN219lxzSd5NpDoX98n1yim0-XAlSCH2sdMUKlLWj5Wsg/exec",
+  scriptUrl: "https://script.google.com/macros/s/AKfycbys-xRjmU9g3L6FweR3dxYDfAMWF1WqZh_CzZbh29gEILS2ih8yqOOGM-uJogo-eFu6GQ/exec",
 
   // ── Paramètres photo ──────────────────────────────────
   photo: {
