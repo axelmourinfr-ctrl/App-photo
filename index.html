@@ -22,10 +22,14 @@
     </div>
 
     <h2 class="section-title">📅 Événements en cours</h2>
-    <p class="section-sub">Choisissez un événement pour partager vos photos</p>
+    <p class="section-sub">Tapez sur un événement pour partager vos photos</p>
 
     <div id="eventsList">
       <div class="loader"><div class="spinner"></div></div>
+    </div>
+
+    <div style="margin-top:1rem;text-align:center">
+      <p class="text-doux">Un événement manque ? Contactez l'organisateur.</p>
     </div>
   </section>
 
@@ -166,7 +170,7 @@
             <option value="concours">🏆 Concours photo avec vote</option>
           </select>
 
-          <button class="btn btn-primary" onclick="createEvent()">✅ Créer l'événement</button>
+          <button class="btn btn-primary" onclick="submitNewEvent()">✅ Créer l'événement</button>
         </div>
       </div>
 

@@ -89,7 +89,7 @@ function showCreateEventForm() {
   document.getElementById("createEventForm").classList.toggle("hidden");
 }
 
-async function createEvent() {
+async function submitNewEvent() {
   const name = document.getElementById("newEventName").value.trim();
   const mode = document.getElementById("newEventMode").value;
   const emoji= document.getElementById("newEventEmoji").value.trim() || "📅";
@@ -107,7 +107,7 @@ async function createEvent() {
   ] : [];
 
   try {
-    await API.createEvent({
+    await API.submitNewEvent({
       name, mode, emoji, date,
       categories: defaultCats,
       id: "ev_" + Date.now(),

@@ -25,7 +25,7 @@ const API = {
     return this._get({ action: "getEvents" });
   },
 
-  async createEvent(event) {
+  async submitNewEvent(event) {
     return this._post("createEvent", event);
   },
 

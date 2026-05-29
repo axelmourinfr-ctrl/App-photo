@@ -88,14 +88,18 @@ function selectEvent(ev) {
 
 // ── Navigation ─────────────────────────────────────────
 function navigateTo(screenId) {
+  // Pas d'événement sélectionné → retour accueil avec message
   if (!CURRENT_EVENT &&
       screenId !== "screen-home" &&
       screenId !== "screen-admin") {
     showScreen("screen-home");
+    showToast("👆 Choisissez d'abord un événement !", "default");
     return;
   }
+  // Vote/Résultats uniquement en mode concours
   if (CURRENT_EVENT?.mode !== "concours" &&
       (screenId === "screen-vote" || screenId === "screen-results")) {
+    showToast("ℹ️ Pas de vote pour cet événement.", "default");
     return;
   }
   if (screenId !== "screen-vote")    cleanupVote?.();
