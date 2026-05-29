@@ -23,15 +23,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function loadEventsList() {
   showLoader("eventsList", "Chargement des événements…");
   try {
-    const events = await API.getEvents();
-    renderEventsList(events || []);
+    const data = await API.getEvents();
+    // Sécurité : s'assurer que c'est bien un tableau
+    const events = Array.isArray(data) ? data : [];
+    renderEventsList(events);
   } catch (err) {
     console.error("Erreur événements :", err);
     document.getElementById("eventsList").innerHTML = `
       <div class="empty-block">
         <div class="empty-icon">⚠️</div>
         <p class="empty-title">Impossible de charger les événements</p>
-        <p class="empty-sub">Vérifiez votre connexion</p>
+        <p class="empty-sub">Vérifiez votre connexion et l'URL Apps Script</p>
       </div>`;
   }
 }

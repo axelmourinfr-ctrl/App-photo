@@ -31,10 +31,15 @@ async function _loadAdminEvents() {
   showLoader("adminEventsList", "Chargement…");
   try {
     const events = await API.getEvents();
-    _renderAdminEvents(events || []);
+    // Sécurité : s'assurer que c'est bien un tableau
+    _renderAdminEvents(Array.isArray(events) ? events : []);
   } catch (err) {
+    console.error("Erreur chargement événements :", err);
     document.getElementById("adminEventsList").innerHTML =
-      `<p style="color:var(--texte-doux);text-align:center;padding:1rem">Erreur de chargement</p>`;
+      `<p style="color:var(--texte-doux);text-align:center;padding:1rem">
+        ⚠️ Impossible de charger les événements.<br>
+        <small>Vérifiez l'URL Apps Script dans config.js</small>
+      </p>`;
   }
 }
 
@@ -116,14 +121,21 @@ async function submitNewEvent() {
     document.getElementById("createEventForm").classList.add("hidden");
     document.getElementById("newEventName").value  = "";
     document.getElementById("newEventDate").value  = "";
+    document.getElementById("newEventEmoji").value = "";
+    // Petit délai pour laisser Google Sheets enregistrer
+    await new Promise(r => setTimeout(r, 1500));
     await _loadAdminEvents();
+    // Recharger aussi la liste accueil
+    if (typeof loadEventsList === "function") await loadEventsList();
   } catch (err) {
     showToast("❌ Création impossible.", "error");
   }
 }
 
 async function deleteEvent(eventId) {
-  if (!confirm("Supprimer cet événement et toutes ses photos ?")) return;
+  if (!confirm("Supprimer cet événement et toutes ses photos ?
+
+Cette action est irréversible.")) return;
   try {
     await API.deleteEvent(eventId);
     if (_adminEvent?.id === eventId) {
@@ -131,8 +143,16 @@ async function deleteEvent(eventId) {
       document.getElementById("adminEventPanel").classList.add("hidden");
     }
     showToast("🗑️ Événement supprimé.", "success");
+    await new Promise(r => setTimeout(r, 1000));
     await _loadAdminEvents();
+    if (typeof loadEventsList === "function") await loadEventsList();
   } catch (err) { showToast("❌ Suppression impossible.", "error"); }
+}
+
+// ── Supprimer l'événement actuellement sélectionné ────
+async function deleteCurrentEvent() {
+  if (!_adminEvent) return;
+  await deleteEvent(_adminEvent.id);
 }
 
 // ── Photos ─────────────────────────────────────────────

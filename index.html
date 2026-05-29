@@ -214,6 +214,21 @@
           </button>
         </div>
 
+        <!-- Supprimer l'événement -->
+        <div class="card" style="border-color:#fee2e2;background:#fff5f5">
+          <p class="input-label" style="margin-bottom:.75rem;color:var(--rouge)">⚠️ Zone dangereuse</p>
+          <button class="btn btn-secondary" id="deleteEventBtn"
+                  style="border-color:var(--rouge);color:var(--rouge)"
+                  onclick="deleteCurrentEvent()">
+            🗑️ Supprimer cet événement
+          </button>
+          <p class="text-doux text-center" style="margin-top:.5rem;font-size:.75rem">
+            Supprime l'événement et toutes ses photos de la base de données.
+          </p>
+        </div>
+
+        <hr class="divider">
+
         <!-- Modération -->
         <h3 style="font-family:var(--font-titre);font-size:1.1rem;font-weight:700;margin-bottom:.75rem">📋 Photos à modérer</h3>
         <div id="adminPhotoList"></div>
