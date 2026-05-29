@@ -124,3 +124,24 @@ hr.divider{border:none;border-top:1.5px solid var(--bordure);margin:1.25rem 0}
 .nav-label{font-family:var(--font-corps);font-size:.62rem;font-weight:700;color:var(--texte-doux);letter-spacing:.02em;margin-top:.1rem}
 .nav-item.active .nav-label{color:var(--rouge)}
 @media(max-width:360px){.event-title{font-size:1.7rem}.categories-grid{gap:.5rem}.cat-label{font-size:.72rem}}
+
+/* ── Cartes événements (accueil) ───────────── */
+.event-card{display:flex;align-items:center;gap:.75rem;background:var(--fond-carte);border-radius:var(--rayon);padding:1.1rem 1rem;margin-bottom:.75rem;box-shadow:var(--ombre);border:1.5px solid var(--bordure);cursor:pointer;transition:transform .15s,box-shadow .15s;-webkit-tap-highlight-color:transparent}
+.event-card:active{transform:scale(.98)}
+.event-card:hover{box-shadow:var(--ombre-forte);transform:translateY(-1px)}
+.event-card-emoji{font-size:2.2rem;flex-shrink:0}
+.event-card-info{flex:1;min-width:0}
+.event-card-name{font-family:var(--font-titre);font-size:1.1rem;font-weight:700;margin-bottom:.15rem}
+.event-card-date{font-size:.78rem;color:var(--texte-doux);font-weight:600}
+.event-card-mode{display:inline-block;margin-top:.3rem;padding:.2rem .65rem;border-radius:50px;font-size:.72rem;font-weight:700}
+.mode-concours{background:linear-gradient(135deg,#fff3e5,#ffe8d5);color:var(--orange);border:1px solid var(--orange)}
+.mode-collecte{background:#d1fae5;color:#065f46;border:1px solid var(--vert)}
+.event-card-arrow{font-size:1.5rem;color:var(--texte-doux);flex-shrink:0}
+
+/* ── Événements dans l'admin ───────────────── */
+.admin-event-item{display:flex;align-items:center;gap:.75rem;background:var(--fond-carte);border-radius:var(--rayon);padding:.9rem 1rem;margin-bottom:.6rem;box-shadow:var(--ombre);border:1.5px solid var(--bordure);cursor:pointer;transition:all .15s}
+.admin-event-item:hover{border-color:var(--orange)}
+.admin-event-item.selected{border-color:var(--orange);background:linear-gradient(135deg,#fff3e5,#ffe8d5)}
+
+/* ── Select input ──────────────────────────── */
+select.input-field{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237A5C45' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 1rem center;padding-right:2.5rem}

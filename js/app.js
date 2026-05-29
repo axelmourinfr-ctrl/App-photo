@@ -1,72 +1,109 @@
 // =============================================
-// js/app.js
-// Point d'entrée — navigation entre les écrans
+// js/app.js — Navigation et état global
 // =============================================
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Injection nom / sous-titre / emoji événement
-  document.querySelectorAll("[data-event-name]").forEach(el => el.textContent = APP_CONFIG.eventName);
-  document.querySelectorAll("[data-event-subtitle]").forEach(el => el.textContent = APP_CONFIG.eventSubtitle);
-  document.querySelectorAll("[data-event-emoji]").forEach(el => el.textContent = APP_CONFIG.eventEmoji);
-  document.title = APP_CONFIG.eventName;
+// ── État global ────────────────────────────────────────
+let CURRENT_EVENT = null;  // Événement sélectionné par l'utilisateur
 
-  // Adaptation selon le mode
-  _applyMode();
+// ── Démarrage ──────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", async () => {
+  document.title = APP_CONFIG.appName;
+  document.querySelectorAll("[data-app-name]").forEach(el =>
+    el.textContent = APP_CONFIG.appName
+  );
+  document.querySelectorAll("[data-app-emoji]").forEach(el =>
+    el.textContent = APP_CONFIG.appEmoji
+  );
 
-  // Badges catégories sur l'accueil
-  const badges = document.getElementById("homeCategories");
-  if (badges) {
-    badges.innerHTML = APP_CONFIG.categories.map(cat =>
-      `<span class="cat-badge">${cat.emoji} ${cat.label}</span>`
-    ).join("");
-  }
-
-  initUpload();
   showScreen("screen-home");
+  await loadEventsList();
 });
 
-// ── Application du mode concours / collecte ───────────
-function _applyMode() {
-  const isCollecte = APP_CONFIG.mode === "collecte";
-
-  // Bouton voter sur l'accueil
-  const btnVote = document.getElementById("btnVoterAccueil");
-  if (btnVote) btnVote.style.display = isCollecte ? "none" : "block";
-
-  // Onglets nav vote et résultats
-  document.querySelectorAll(".nav-vote, .nav-results").forEach(el => {
-    el.style.display = isCollecte ? "none" : "";
-  });
-
-  // Titre et sous-titre upload selon le mode
-  const uploadTitle = document.getElementById("uploadScreenTitle");
-  const uploadSub   = document.getElementById("uploadScreenSub");
-  const catLabel    = document.getElementById("categoryLabel");
-
-  if (isCollecte) {
-    if (uploadTitle) uploadTitle.textContent = "📷 Partager une photo";
-    if (uploadSub)   uploadSub.textContent   = "Prenez ou choisissez une photo à partager";
-    if (catLabel)    catLabel.textContent     = "🏷️ Choisissez un tag (optionnel)";
-  } else {
-    if (uploadTitle) uploadTitle.textContent = "📷 Ma photo";
-    if (uploadSub)   uploadSub.textContent   = "Choisissez une photo et une catégorie";
-    if (catLabel)    catLabel.textContent     = "🏆 Choisissez une catégorie *";
+// ── Chargement de la liste des événements ─────────────
+async function loadEventsList() {
+  showLoader("eventsList", "Chargement des événements…");
+  try {
+    const events = await API.getEvents();
+    renderEventsList(events || []);
+  } catch (err) {
+    console.error("Erreur événements :", err);
+    document.getElementById("eventsList").innerHTML = `
+      <div class="empty-block">
+        <div class="empty-icon">⚠️</div>
+        <p class="empty-title">Impossible de charger les événements</p>
+        <p class="empty-sub">Vérifiez votre connexion</p>
+      </div>`;
   }
 }
 
-// ── Navigation principale ─────────────────────────────
-function navigateTo(screenId) {
-  // En mode collecte, rediriger vote/résultats vers accueil
-  if (APP_CONFIG.mode === "collecte" &&
-      (screenId === "screen-vote" || screenId === "screen-results")) {
-    screenId = "screen-home";
+// ── Affichage de la liste des événements ──────────────
+function renderEventsList(events) {
+  const container = document.getElementById("eventsList");
+  if (!events.length) {
+    container.innerHTML = `
+      <div class="empty-block">
+        <div class="empty-icon">📅</div>
+        <p class="empty-title">Aucun événement en cours</p>
+        <p class="empty-sub">L'organisateur ajoutera bientôt un événement !</p>
+      </div>`;
+    return;
   }
-  if (screenId !== "screen-vote")    cleanupVote();
+
+  container.innerHTML = events.map(ev => `
+    <div class="event-card" onclick="selectEvent(${JSON.stringify(ev).replace(/"/g, '&quot;')})">
+      <div class="event-card-emoji">${ev.emoji || "📅"}</div>
+      <div class="event-card-info">
+        <div class="event-card-name">${ev.name}</div>
+        <div class="event-card-date">${ev.date || ""}</div>
+        <span class="event-card-mode ${ev.mode === 'concours' ? 'mode-concours' : 'mode-collecte'}">
+          ${ev.mode === "concours" ? "🏆 Concours photo" : "📷 Collecte de photos"}
+        </span>
+      </div>
+      <div class="event-card-arrow">›</div>
+    </div>`).join("");
+}
+
+// ── Sélection d'un événement ──────────────────────────
+function selectEvent(ev) {
+  CURRENT_EVENT = ev;
+
+  // Mettre à jour les titres avec le nom de l'événement
+  document.querySelectorAll("[data-event-name]").forEach(el =>
+    el.textContent = ev.name
+  );
+  document.querySelectorAll("[data-event-emoji]").forEach(el =>
+    el.textContent = ev.emoji || "📅"
+  );
+
+  // Adapter la nav selon le mode
+  const isConcours = ev.mode === "concours";
+  document.querySelectorAll(".nav-vote, .nav-results").forEach(el => {
+    el.style.display = isConcours ? "" : "none";
+  });
+
+  // Aller directement à l'upload
+  navigateTo("screen-upload");
+  initUpload();
+}
+
+// ── Navigation ─────────────────────────────────────────
+function navigateTo(screenId) {
+  if (!CURRENT_EVENT &&
+      screenId !== "screen-home" &&
+      screenId !== "screen-admin") {
+    showScreen("screen-home");
+    return;
+  }
+  if (CURRENT_EVENT?.mode !== "concours" &&
+      (screenId === "screen-vote" || screenId === "screen-results")) {
+    return;
+  }
+  if (screenId !== "screen-vote")    cleanupVote?.();
   if (screenId === "screen-vote")    initVote();
   if (screenId === "screen-results") initResults();
   showScreen(screenId);
 }
 
-// ── Raccourcis depuis l'accueil ───────────────────────
-function goToUpload() { navigateTo("screen-upload"); }
-function goToVote()   { navigateTo("screen-vote");   }
+function goToUpload()  { navigateTo("screen-upload"); }
+function goToVote()    { navigateTo("screen-vote");   }
+function goToHome()    { CURRENT_EVENT = null; showScreen("screen-home"); loadEventsList(); }

@@ -1,32 +1,53 @@
 // =============================================
-// js/upload.js
-// Gestion de l'envoi de photo par les visiteurs
+// js/upload.js — Envoi de photo
 // =============================================
 
-let _file      = null;   // Fichier sélectionné
-let _category  = null;   // Catégorie choisie
-let _sending   = false;  // Verrou anti-double envoi
+let _file     = null;
+let _category = null;
+let _sending  = false;
 
-// ── Init (appelé au démarrage) ────────────────────────
 function initUpload() {
-  _buildCategoryGrid();
-  _bindEvents();
+  if (!CURRENT_EVENT) return;
+  const isConcours = CURRENT_EVENT.mode === "concours";
+
+  // Titre et sous-titre selon mode
+  const title = document.getElementById("uploadScreenTitle");
+  const sub   = document.getElementById("uploadScreenSub");
+  const catSection = document.getElementById("catSection");
+  if (title) title.textContent = isConcours ? "📷 Ma photo" : "📷 Partager une photo";
+  if (sub)   sub.textContent   = isConcours
+    ? "Choisissez une photo et une catégorie"
+    : "Choisissez une photo depuis votre galerie";
+
+  // Section catégorie visible seulement en mode concours
+  if (catSection) catSection.style.display = isConcours ? "block" : "none";
+
+  // Construire la grille de catégories si concours
+  if (isConcours) _buildCategoryGrid();
+
+  // Réinitialiser la sélection
+  _file = null; _category = null;
+  document.getElementById("photoPreview").innerHTML = "";
+  document.getElementById("uploadZone").classList.remove("hidden");
+
+  // Bind bouton envoi
+  const btn = document.getElementById("sendPhotoBtn");
+  if (btn) btn.onclick = _handleSend;
 }
 
-// ── Grille des catégories ─────────────────────────────
+// ── Grille catégories ──────────────────────────────────
 function _buildCategoryGrid() {
   const grid = document.getElementById("categoriesGrid");
-  if (!grid) return;
-  grid.innerHTML = APP_CONFIG.categories.map(cat => `
+  if (!grid || !CURRENT_EVENT?.categories) return;
+  const cats = CURRENT_EVENT.categories;
+  grid.innerHTML = cats.map(cat => `
     <button class="category-btn" data-id="${cat.id}"
-            onclick="selectCategory('${cat.id}')"
-            aria-label="Catégorie : ${cat.label}">
+            onclick="selectCategory('${cat.id}')">
       <span class="cat-emoji">${cat.emoji}</span>
       <span class="cat-label">${cat.label}</span>
     </button>`).join("");
 }
 
-// ── Sélection d'une catégorie ─────────────────────────
 function selectCategory(id) {
   _category = id;
   document.querySelectorAll(".category-btn").forEach(b =>
@@ -34,111 +55,81 @@ function selectCategory(id) {
   );
 }
 
-// ── Liaison des événements ────────────────────────────
-function _bindEvents() {
-  const sendBtn = document.getElementById("sendPhotoBtn");
-  if (sendBtn) sendBtn.addEventListener("click", _handleSend);
-  // Les inputs caméra et galerie sont gérés via handleFileInputChange()
-  // appelé directement depuis le HTML (onchange)
-}
-
-// ── Appelé depuis les deux inputs (HTML onchange) ─────
+// ── Inputs fichier ─────────────────────────────────────
 function handleFileInputChange(inputEl) {
-  if (inputEl.files && inputEl.files[0]) {
-    _handleFile(inputEl.files[0]);
-  }
+  if (inputEl.files && inputEl.files[0]) _handleFile(inputEl.files[0]);
 }
 
-// ── Traitement du fichier choisi ──────────────────────
 function _handleFile(file) {
-  // Vérification taille
   if (file.size > APP_CONFIG.photo.maxSizeMB * 1024 * 1024) {
     showToast(`❌ Photo trop lourde (max ${APP_CONFIG.photo.maxSizeMB} Mo).`, "error");
     return;
   }
   _file = file;
-
-  // Prévisualisation
   const reader = new FileReader();
   reader.onload = ({ target }) => {
     document.getElementById("photoPreview").innerHTML = `
       <div class="photo-preview">
         <img src="${target.result}" alt="Votre photo">
-        <button class="preview-remove" onclick="removePhoto()" aria-label="Supprimer">✕</button>
+        <button class="preview-remove" onclick="removePhoto()">✕</button>
       </div>`;
     document.getElementById("uploadZone").classList.add("hidden");
   };
   reader.readAsDataURL(file);
 }
 
-// ── Suppression de la sélection ───────────────────────
 function removePhoto() {
   _file = null;
   document.getElementById("photoPreview").innerHTML = "";
   document.getElementById("uploadZone").classList.remove("hidden");
-  // Réinitialiser les deux inputs
-  const cam = document.getElementById("photoInputCamera");
-  const gal = document.getElementById("photoInputGallery");
-  if (cam) cam.value = "";
-  if (gal) gal.value = "";
+  ["photoInputCamera", "photoInputGallery"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = "";
+  });
 }
 
-// ── Envoi ─────────────────────────────────────────────
+// ── Envoi ──────────────────────────────────────────────
 async function _handleSend() {
   if (!_file) { showToast("📷 Choisissez d'abord une photo.", "error"); return; }
-  // En mode concours, la catégorie est obligatoire
-  // En mode collecte, elle est optionnelle
-  if (!_category && APP_CONFIG.mode !== "collecte") {
-    showToast("🏷️ Sélectionnez une catégorie.", "error");
-    return;
+  const isConcours = CURRENT_EVENT?.mode === "concours";
+  if (isConcours && !_category) {
+    showToast("🏷️ Sélectionnez une catégorie.", "error"); return;
   }
-  if (_sending)   return;
+  if (_sending) return;
 
   _sending = true;
   const btn = document.getElementById("sendPhotoBtn");
-  btn.disabled    = true;
-  btn.textContent = "⏳ Envoi en cours…";
+  btn.disabled = true; btn.textContent = "⏳ Envoi en cours…";
 
   try {
-    // 1. Compression
-    const blob = await compressImage(_file);
+    const blob     = await compressImage(_file);
+    const photoUrl = await API.uploadPhoto(blob, CURRENT_EVENT.id);
+    const pseudo   = document.getElementById("pseudoInput")?.value.trim() || "";
 
-    // 2. Upload Cloudinary → URL publique
-    const photoUrl = await API.uploadPhoto(blob);
-
-    // 3. Enregistrement dans Google Sheets
-    const pseudo = document.getElementById("pseudoInput")?.value.trim() || "";
     await API.savePhoto({
       url:       photoUrl,
-      category:  _category,
+      eventId:   CURRENT_EVENT.id,
+      category:  _category || "general",
       pseudo:    pseudo || "Anonyme",
       visitorId: getVisitorId(),
     });
 
-    // 4. Succès
     showScreen("screen-success");
     _resetForm();
-
   } catch (err) {
     console.error("Erreur envoi :", err);
-    showToast("❌ Envoi échoué. Vérifiez votre connexion et réessayez.", "error");
+    showToast("❌ Envoi échoué. Vérifiez votre connexion.", "error");
   } finally {
-    _sending        = false;
-    btn.disabled    = false;
-    btn.textContent = "🚀 Envoyer ma photo";
+    _sending = false; btn.disabled = false; btn.textContent = "🚀 Envoyer ma photo";
   }
 }
 
-// ── Remise à zéro du formulaire ───────────────────────
 function _resetForm() {
-  _file     = null;
-  _category = null;
+  _file = null; _category = null;
   document.getElementById("photoPreview").innerHTML = "";
   document.getElementById("uploadZone").classList.remove("hidden");
-  const cam = document.getElementById("photoInputCamera");
-  const gal = document.getElementById("photoInputGallery");
-  if (cam) cam.value = "";
-  if (gal) gal.value = "";
+  ["photoInputCamera","photoInputGallery"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = "";
+  });
   const pseudo = document.getElementById("pseudoInput");
   if (pseudo) pseudo.value = "";
   document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("selected"));

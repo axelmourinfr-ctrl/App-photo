@@ -1,218 +1,217 @@
 // =============================================
 // Code.gs — Google Apps Script
-// Backend de l'app Fête des Familles
-// Copiez ce code entier dans votre Apps Script
+// Backend : gestion événements + photos + votes
 // =============================================
 
-// ── Nom de la feuille de paramètres ──────────
 const SETTINGS_SHEET = "_settings";
+const EVENTS_SHEET   = "_events";
 
-// ══════════════════════════════════════════════
-// POINT D'ENTRÉE — Requêtes GET (lecture)
-// ══════════════════════════════════════════════
+// ══ GET ════════════════════════════════════════
 function doGet(e) {
-  const params = e.parameter;
+  const p = e.parameter;
   let result;
-
   try {
-    switch (params.action) {
-
-      case "getPhotos":
-        result = getPhotos(params.edition, params.status, params.category || null);
-        break;
-
-      case "getVoteStatus":
-        result = getVoteStatus();
-        break;
-
-      default:
-        result = { error: "Action inconnue : " + params.action };
+    switch(p.action) {
+      case "getEvents":     result = getEvents(); break;
+      case "getPhotos":     result = getPhotos(p.eventId, p.status, p.category||null); break;
+      case "getVoteStatus": result = getVoteStatus(p.eventId); break;
+      default: result = { error: "Action inconnue : " + p.action };
     }
-  } catch (err) {
-    result = { error: err.message };
-  }
-
+  } catch(err) { result = { error: err.message }; }
   return jsonResponse(result);
 }
 
-// ══════════════════════════════════════════════
-// POINT D'ENTRÉE — Requêtes POST (écriture)
-// ══════════════════════════════════════════════
+// ══ POST ═══════════════════════════════════════
 function doPost(e) {
   let body, result;
-
   try {
     body = JSON.parse(e.postData.contents);
-
-    switch (body.action) {
-
-      case "addPhoto":
-        result = addPhoto(body);
-        break;
-
-      case "moderatePhoto":
-        result = moderatePhoto(body.rowIndex, body.status);
-        break;
-
-      case "castVote":
-        result = castVote(body.rowIndex, body.visitorId);
-        break;
-
-      case "setVoteStatus":
-        result = setVoteStatus(body.open);
-        break;
-
-      case "deletePhoto":
-        result = deletePhoto(body.rowIndex);
-        break;
-
-      default:
-        result = { error: "Action inconnue : " + body.action };
+    switch(body.action) {
+      case "createEvent":    result = createEvent(body); break;
+      case "updateEvent":    result = updateEvent(body.eventId, body); break;
+      case "deleteEvent":    result = deleteEvent(body.eventId); break;
+      case "addPhoto":       result = addPhoto(body); break;
+      case "moderatePhoto":  result = moderatePhoto(body.rowIndex, body.status); break;
+      case "deletePhoto":    result = deletePhoto(body.rowIndex); break;
+      case "castVote":       result = castVote(body.rowIndex, body.visitorId); break;
+      case "setVoteStatus":  result = setVoteStatus(body.eventId, body.open); break;
+      default: result = { error: "Action inconnue : " + body.action };
     }
-  } catch (err) {
-    result = { error: err.message };
-  }
-
+  } catch(err) { result = { error: err.message }; }
   return jsonResponse(result);
 }
 
-// ══════════════════════════════════════════════
-// FONCTIONS MÉTIER
-// ══════════════════════════════════════════════
+// ══ ÉVÉNEMENTS ═════════════════════════════════
 
-// ── Ajouter une photo ──────────────────────────
-function addPhoto({ url, category, pseudo, visitorId, edition }) {
-  const sheet = getOrCreateSheet(edition);
-
-  // En-têtes si feuille vide
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(["URL", "Catégorie", "Pseudo", "Statut", "Votes", "VisitorID", "Date"]);
-    // Style en-tête
-    const header = sheet.getRange(1, 1, 1, 7);
-    header.setFontWeight("bold");
-    header.setBackground("#F2813A");
-    header.setFontColor("#FFFFFF");
-  }
-
-  sheet.appendRow([
-    url,
-    category,
-    pseudo || "Anonyme",
-    "pending",       // statut initial
-    0,               // votes
-    visitorId,
-    new Date().toISOString(),
-  ]);
-
-  return { ok: true, row: sheet.getLastRow() };
-}
-
-// ── Récupérer des photos ───────────────────────
-function getPhotos(edition, statusFilter, categoryFilter) {
-  const sheet = getOrCreateSheet(edition);
-  const lastRow = sheet.getLastRow();
-
-  if (lastRow <= 1) return []; // Vide ou juste en-têtes
-
-  const data = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
-
-  const photos = data
-    .map((row, i) => ({
-      rowIndex:  i + 2,           // numéro de ligne réel dans le sheet
-      url:       row[0],
-      category:  row[1],
-      pseudo:    row[2],
-      status:    row[3],
-      votes:     Number(row[4]) || 0,
-      visitorId: row[5],
-      date:      row[6],
+function getEvents() {
+  const sheet = getOrCreateEventsSheet();
+  const last  = sheet.getLastRow();
+  if (last <= 1) return [];
+  const data = sheet.getRange(2, 1, last-1, 7).getValues();
+  return data
+    .filter(r => r[0])
+    .map(r => ({
+      id:         r[0],
+      name:       r[1],
+      mode:       r[2],
+      emoji:      r[3],
+      date:       r[4],
+      categories: r[5] ? JSON.parse(r[5]) : [],
+      active:     r[6],
     }))
-    .filter(p => p.url) // Ignorer les lignes vides
-    .filter(p => statusFilter === "all" || p.status === statusFilter)
-    .filter(p => !categoryFilter || p.category === categoryFilter);
-
-  // Tri par votes décroissant
-  photos.sort((a, b) => b.votes - a.votes);
-
-  return photos;
+    .filter(ev => ev.active !== false);
 }
 
-// ── Modérer une photo (approved / rejected) ───
-function moderatePhoto(rowIndex, status) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  // On doit trouver la bonne feuille — on cherche dans toutes les feuilles
-  const sheets = ss.getSheets().filter(s => s.getName() !== SETTINGS_SHEET);
+function createEvent({ id, name, mode, emoji, date, categories }) {
+  const sheet = getOrCreateEventsSheet();
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["ID","Nom","Mode","Emoji","Date","Categories","Active"]);
+    const h = sheet.getRange(1,1,1,7);
+    h.setFontWeight("bold"); h.setBackground("#E8452C"); h.setFontColor("#FFFFFF");
+  }
+  sheet.appendRow([id, name, mode, emoji||"📅", date||"", JSON.stringify(categories||[]), true]);
 
-  for (const sheet of sheets) {
-    if (rowIndex <= sheet.getLastRow()) {
-      sheet.getRange(rowIndex, 4).setValue(status); // Colonne D = Statut
+  // Créer l'onglet photos pour cet événement
+  getOrCreatePhotoSheet(id);
+  return { ok: true, id };
+}
+
+function updateEvent(eventId, fields) {
+  const sheet = getOrCreateEventsSheet();
+  const data  = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === eventId) {
+      if (fields.name)       sheet.getRange(i+1,2).setValue(fields.name);
+      if (fields.mode)       sheet.getRange(i+1,3).setValue(fields.mode);
+      if (fields.emoji)      sheet.getRange(i+1,4).setValue(fields.emoji);
+      if (fields.date)       sheet.getRange(i+1,5).setValue(fields.date);
+      if (fields.categories) sheet.getRange(i+1,6).setValue(JSON.stringify(fields.categories));
       return { ok: true };
     }
   }
-  return { error: "Ligne introuvable" };
+  return { error: "Événement introuvable" };
 }
 
-// ── Enregistrer un vote ───────────────────────
-function castVote(rowIndex, visitorId) {
-  const ss     = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = ss.getSheets().filter(s => s.getName() !== SETTINGS_SHEET);
-
-  for (const sheet of sheets) {
-    if (rowIndex <= sheet.getLastRow()) {
-      const range     = sheet.getRange(rowIndex, 5); // Colonne E = Votes
-      const current   = Number(range.getValue()) || 0;
-      range.setValue(current + 1);
-      return { ok: true, votes: current + 1 };
+function deleteEvent(eventId) {
+  const sheet = getOrCreateEventsSheet();
+  const data  = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === eventId) {
+      sheet.getRange(i+1, 7).setValue(false); // Marquer inactif
+      return { ok: true };
     }
   }
-  return { error: "Photo introuvable" };
+  return { error: "Événement introuvable" };
 }
 
-// ── Statut des votes (ouvert / fermé) ─────────
-function getVoteStatus() {
-  const sheet = getOrCreateSettingsSheet();
-  const val   = sheet.getRange("A1").getValue();
-  return { open: val === true || val === "true" };
-}
+// ══ PHOTOS ═════════════════════════════════════
 
-function setVoteStatus(open) {
-  const sheet = getOrCreateSettingsSheet();
-  sheet.getRange("A1").setValue(open === true);
-  sheet.getRange("B1").setValue(open ? "Votes OUVERTS" : "Votes FERMÉS");
-  return { ok: true, open };
-}
-
-// ══════════════════════════════════════════════
-// UTILITAIRES
-// ══════════════════════════════════════════════
-
-// ── Obtenir ou créer une feuille par édition ──
-function getOrCreateSheet(edition) {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  let   sheet = ss.getSheetByName(edition);
-  if (!sheet) {
-    sheet = ss.insertSheet(edition);
+function addPhoto({ url, eventId, category, pseudo, visitorId }) {
+  const sheet = getOrCreatePhotoSheet(eventId);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["URL","Catégorie","Pseudo","Statut","Votes","VisitorID","Date"]);
+    const h = sheet.getRange(1,1,1,7);
+    h.setFontWeight("bold"); h.setBackground("#F2813A"); h.setFontColor("#FFFFFF");
   }
-  return sheet;
+  sheet.appendRow([url, category, pseudo||"Anonyme", "pending", 0, visitorId, new Date().toISOString()]);
+  return { ok: true, row: sheet.getLastRow() };
 }
 
-// ── Feuille de paramètres globaux ─────────────
+function getPhotos(eventId, statusFilter, categoryFilter) {
+  const sheet   = getOrCreatePhotoSheet(eventId);
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
+  const data = sheet.getRange(2,1,lastRow-1,7).getValues();
+  return data
+    .map((r,i) => ({ rowIndex:i+2, url:r[0], category:r[1], pseudo:r[2], status:r[3], votes:Number(r[4])||0, visitorId:r[5], date:r[6] }))
+    .filter(p => p.url)
+    .filter(p => statusFilter==="all" || p.status===statusFilter)
+    .filter(p => !categoryFilter || p.category===categoryFilter)
+    .sort((a,b) => b.votes - a.votes);
+}
+
+function moderatePhoto(rowIndex, status) {
+  const sheet = _findSheetByRow(rowIndex);
+  if (!sheet) return { error: "Introuvable" };
+  sheet.getRange(rowIndex, 4).setValue(status);
+  return { ok: true };
+}
+
+function deletePhoto(rowIndex) {
+  const sheet = _findSheetByRow(rowIndex);
+  if (!sheet) return { error: "Introuvable" };
+  sheet.deleteRow(rowIndex);
+  return { ok: true };
+}
+
+function castVote(rowIndex, visitorId) {
+  const sheet = _findSheetByRow(rowIndex);
+  if (!sheet) return { error: "Introuvable" };
+  const range   = sheet.getRange(rowIndex, 5);
+  const current = Number(range.getValue())||0;
+  range.setValue(current+1);
+  return { ok: true, votes: current+1 };
+}
+
+// ══ VOTES ══════════════════════════════════════
+
+function getVoteStatus(eventId) {
+  const sheet = getOrCreateSettingsSheet();
+  const data  = sheet.getDataRange().getValues();
+  for (const row of data) {
+    if (row[0] === eventId) return { open: row[1]===true||row[1]==="true" };
+  }
+  return { open: false };
+}
+
+function setVoteStatus(eventId, open) {
+  const sheet = getOrCreateSettingsSheet();
+  const data  = sheet.getDataRange().getValues();
+  for (let i = 0; i < data.length; i++) {
+    if (data[i][0] === eventId) {
+      sheet.getRange(i+1, 2).setValue(open===true);
+      sheet.getRange(i+1, 3).setValue(open ? "OUVERT" : "FERMÉ");
+      return { ok: true };
+    }
+  }
+  // Nouvelle ligne
+  sheet.appendRow([eventId, open===true, open?"OUVERT":"FERMÉ"]);
+  return { ok: true };
+}
+
+// ══ UTILITAIRES ════════════════════════════════
+
+function getOrCreateEventsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(EVENTS_SHEET) || ss.insertSheet(EVENTS_SHEET);
+}
+
+function getOrCreatePhotoSheet(eventId) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const name = "photos_" + eventId;
+  return ss.getSheetByName(name) || ss.insertSheet(name);
+}
+
 function getOrCreateSettingsSheet() {
-  const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  let   sheet = ss.getSheetByName(SETTINGS_SHEET);
-  if (!sheet) {
-    sheet = ss.insertSheet(SETTINGS_SHEET);
-    sheet.getRange("A1").setValue(false);
-    sheet.getRange("B1").setValue("Votes FERMÉS");
-    sheet.hideSheet(); // Cachée de l'interface par défaut
-  }
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SETTINGS_SHEET);
+  if (!sheet) { sheet = ss.insertSheet(SETTINGS_SHEET); sheet.hideSheet(); }
   return sheet;
 }
 
-// ── Réponse JSON avec CORS ────────────────────
+function _findSheetByRow(rowIndex) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets().filter(s =>
+    s.getName() !== SETTINGS_SHEET && s.getName() !== EVENTS_SHEET
+  );
+  for (const sheet of sheets) {
+    if (rowIndex >= 2 && rowIndex <= sheet.getLastRow()) return sheet;
+  }
+  return null;
+}
+
 function jsonResponse(data) {
-  const output = ContentService
+  return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
-  return output;
 }
